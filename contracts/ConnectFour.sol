@@ -156,7 +156,6 @@ contract ConnectFour {
     /// @param _col the index of the column to place a disc in, valid values are 0 through 6 inclusive
     function playMove(uint256 _gameId, uint256 _col) external {
         require(_gameId < gameIdCounter, "Error: invalid game ID");
-        require(_col < 7, "Error: invalid column");
         require(
             games[_gameId].board[boardIndex(_col, 6)] == Disc.Empty,
             "Error: column full"
@@ -199,7 +198,109 @@ contract ConnectFour {
         uint256 _startingWinDiscRow,
         WinningDirection _direction
     ) external {
-        // finish
+        require(_gameId < gameIdCounter, "Error: invalid game ID");
+
+        Game memory game = games[_gameId];
+
+        require(game.status == Status.Started, "Error: Game not started");
+        require(
+            msg.sender == game.player1 || msg.sender == game.player2,
+            "Error: not your game"
+        );
+
+        Disc player = game.player1 == msg.sender ? Disc.Player1 : Disc.Player2;
+        uint256 firstBoardIndex = boardIndex(
+            _startingWinDiscCol,
+            _startingWinDiscRow
+        );
+
+        require(game.board[firstBoardIndex] == player, "Error: have not won");
+
+        if (_direction == WinningDirection.Right) {
+            require(
+                game.board[
+                    boardIndex(_startingWinDiscCol + 1, _startingWinDiscRow)
+                ] ==
+                    player &&
+                    game.board[
+                        boardIndex(_startingWinDiscCol + 2, _startingWinDiscRow)
+                    ] ==
+                    player &&
+                    game.board[
+                        boardIndex(_startingWinDiscCol + 3, _startingWinDiscRow)
+                    ] ==
+                    player,
+                "Error: have not won"
+            );
+        } else if (_direction == WinningDirection.Up) {
+            require(
+                game.board[
+                    boardIndex(_startingWinDiscCol, _startingWinDiscRow + 1)
+                ] ==
+                    player &&
+                    game.board[
+                        boardIndex(_startingWinDiscCol, _startingWinDiscRow + 2)
+                    ] ==
+                    player &&
+                    game.board[
+                        boardIndex(_startingWinDiscCol, _startingWinDiscRow + 3)
+                    ] ==
+                    player,
+                "Error: have not won"
+            );
+        } else if (_direction == WinningDirection.RightDiagonal) {
+            require(
+                game.board[
+                    boardIndex(_startingWinDiscCol + 1, _startingWinDiscRow + 1)
+                ] ==
+                    player &&
+                    game.board[
+                        boardIndex(
+                            _startingWinDiscCol + 2,
+                            _startingWinDiscRow + 2
+                        )
+                    ] ==
+                    player &&
+                    game.board[
+                        boardIndex(
+                            _startingWinDiscCol + 3,
+                            _startingWinDiscRow + 3
+                        )
+                    ] ==
+                    player,
+                "Error: have not won"
+            );
+        } else {
+            require(
+                game.board[
+                    boardIndex(_startingWinDiscCol + 1, _startingWinDiscRow - 1)
+                ] ==
+                    player &&
+                    game.board[
+                        boardIndex(
+                            _startingWinDiscCol + 2,
+                            _startingWinDiscRow - 2
+                        )
+                    ] ==
+                    player &&
+                    game.board[
+                        boardIndex(
+                            _startingWinDiscCol + 3,
+                            _startingWinDiscRow - 3
+                        )
+                    ] ==
+                    player,
+                "Error: have not won"
+            );
+        }
+
+        games[_gameId].status = Status.BetWithdrawn;
+
+        uint256 rewardAmount = games[_gameId].betAmount * 2;
+        (bool success, ) = _recipient.call{value: rewardAmount}("");
+        require(success, "Error: withdraw failed");
+
+        emit RewardClaimed(_gameId, msg.sender, _recipient, rewardAmount);
     }
 
     /// @notice Return the index of a disc in the board, given its column and row index (0-indexed)
@@ -212,6 +313,8 @@ contract ConnectFour {
         pure
         returns (uint256)
     {
+        require(_col < 7 && _row < 7, "Error: invalid coordinates");
+
         return (_row * 7) + _col;
     }
 }
