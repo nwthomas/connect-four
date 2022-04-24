@@ -91,7 +91,10 @@ contract ConnectFour {
     /// @dev Increase _minBetAmount if you want to attract degenerates, lower _maxBetAmount to keep them away
     /// @param _minBetAmount the lowest amount a player will be able to bet
     /// @param _maxBetAmount the largest amount a player will be able to bet
-    constructor(uint256 _minBetAmount, uint256 _maxBetAmount) {}
+    constructor(uint256 _minBetAmount, uint256 _maxBetAmount) {
+        minBetAmount = _minBetAmount;
+        maxBetAmount = _maxBetAmount;
+    }
 
     /// @notice Create a Game that can be started by any other address. To start a game the caller
     /// must send an ETH amount between the min and max bet amounts
@@ -99,13 +102,49 @@ contract ConnectFour {
     /// the opponent must send in the same amount of ETH in ConnectFour.startGame
     /// @dev the returned gameId is a monotonically increasing ID used to interact with this new Game
     /// @return a game ID, which can be used by each player to interact with the new Game
-    function initializeGame() external payable returns (uint256) {}
+    function initializeGame() external payable returns (uint256) {
+        require(
+            msg.value < maxBetAmount && msg.value > minBetAmount,
+            "Error: invalid bet amount"
+        );
 
-    /// @notice Start a that has already been initialized by player1. The caller of this function (player2)
+        uint256 newGameId = gameIdCounter;
+        gameIdCounter += 1;
+
+        Disc[42] memory newGameBoard;
+
+        games[newGameId] = Game(
+            msg.sender,
+            address(0),
+            newGameBoard,
+            msg.value,
+            Status.Initialized,
+            true
+        );
+
+        emit GameInitialized(newGameId, msg.sender, msg.value);
+
+        return newGameId;
+    }
+
+    /// @notice Start a game that has already been initialized by player1. The caller of this function (player2)
     /// must send in the same amount of ETH as player1 sent in. Afterwards the Game has started, and players
     /// may call ConnectFour.playMove to place their discs
     /// @param _gameId the game's ID, returned when player1 called ConnectFour.initializeGame
-    function startGame(uint256 _gameId) external payable {}
+    function startGame(uint256 _gameId) external payable {
+        require(_gameId < gameIdCounter, "Error: invalid game ID");
+        require(
+            games[_gameId].status == Status.Initialized,
+            "Error: game already started"
+        );
+        require(
+            msg.value == games[_gameId].betAmount,
+            "Error: invalid bet amount"
+        );
+
+        games[_gameId].player2 = msg.sender;
+        games[_gameId].status = Status.Started;
+    }
 
     /// @notice Place a disc in the given column with the given Game. player1 and player2 will take
     /// turns placing one of their discs in a column, where it will fall until it stays in the bottom-most
@@ -115,7 +154,31 @@ contract ConnectFour {
     /// board, trying to place a disc in a column which is already full, or going out of turn
     /// @param _gameId the game's ID, returned when player1 called ConnectFour.initializeGame
     /// @param _col the index of the column to place a disc in, valid values are 0 through 6 inclusive
-    function playMove(uint256 _gameId, uint256 _col) external {}
+    function playMove(uint256 _gameId, uint256 _col) external {
+        require(_gameId < gameIdCounter, "Error: invalid game ID");
+        require(_col < 7, "Error: invalid column");
+        require(
+            games[_gameId].board[boardIndex(_col, 6)] == Disc.Empty,
+            "Error: column full"
+        );
+        require(
+            games[_gameId].isPlayer1Turn
+                ? msg.sender == games[_gameId].player1
+                : msg.sender == games[_gameId].player2,
+            "Error: not your turn"
+        );
+
+        games[_gameId].isPlayer1Turn = !games[_gameId].isPlayer1Turn;
+
+        for (uint256 i = 0; i < 7; i++) {
+            if (games[_gameId].board[boardIndex(_col, i)] == Disc.Empty) {
+                games[_gameId].board[boardIndex(_col, i)] = games[_gameId]
+                    .isPlayer1Turn
+                    ? Disc.Player1
+                    : Disc.Player2;
+            }
+        }
+    }
 
     /// @notice Withdraws the bet amounts of both players to the recipient for the given game when there exists
     /// a winning four-in-a-row of the caller's discs. The caller specifies the four-in-a-row by providing
@@ -135,7 +198,9 @@ contract ConnectFour {
         uint256 _startingWinDiscCol,
         uint256 _startingWinDiscRow,
         WinningDirection _direction
-    ) external {}
+    ) external {
+        // finish
+    }
 
     /// @notice Return the index of a disc in the board, given its column and row index (0-indexed)
     /// @dev this function will throw if the column or row are out of bounds
@@ -146,5 +211,7 @@ contract ConnectFour {
         public
         pure
         returns (uint256)
-    {}
+    {
+        return (_row * 7) + _col;
+    }
 }
