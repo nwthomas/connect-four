@@ -293,7 +293,7 @@ contract ConnectFour {
     pure
     returns (uint256)
   {
-    require(_col < 7 && _row < 7, "Error: invalid coordinates");
+    require(_col < 7 && _row < 6, "Error: invalid indices");
 
     return (_row * 7) + _col;
   }

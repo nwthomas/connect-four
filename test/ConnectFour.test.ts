@@ -53,4 +53,61 @@ describe("ConnectFour", () => {
       expect(maxBetAmountTxn).to.equal(deployArgs.maxBetAmount);
     });
   });
+
+  describe("initializeGame", () => {
+    // finish
+  });
+
+  describe("startGame", () => {
+    // finish
+  });
+
+  describe("playMove", () => {
+    // finish
+  });
+
+  describe("claimReward", () => {
+    // finish
+  });
+
+  describe("boardIndex", () => {
+    it("returns the correct index for a single array", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      let boardIndexTxn = await contract.boardIndex(0, 0);
+      expect(boardIndexTxn).to.equal(0);
+
+      boardIndexTxn = await contract.boardIndex(0, 1);
+      expect(boardIndexTxn).to.equal(7);
+
+      boardIndexTxn = await contract.boardIndex(6, 5);
+      expect(boardIndexTxn).to.equal(41);
+    });
+
+    it("throws an error when the column index is out of bounds", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      let error;
+      try {
+        await contract.boardIndex(100, 5);
+      } catch (newError) {
+        error = newError;
+      }
+
+      expect(error).to.not.equal(undefined);
+    });
+
+    it("throws an error when the row index is out of bounds", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      let error;
+      try {
+        await contract.boardIndex(6, 100);
+      } catch (newError) {
+        error = newError;
+      }
+
+      expect(error).to.not.equal(undefined);
+    });
+  });
 });
