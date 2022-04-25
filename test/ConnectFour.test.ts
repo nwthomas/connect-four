@@ -55,7 +55,107 @@ describe("ConnectFour", () => {
   });
 
   describe("initializeGame", () => {
-    // finish
+    it("initializes a brand new game with a player 1 and bet amount", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account1).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      const player1AddressTxn = await (await contract.games(0)).player1;
+      expect(player1AddressTxn).to.equal(account1.address);
+
+      const betAmountTxn = await (await contract.games(0)).betAmount;
+      expect(betAmountTxn).to.equal(ethers.utils.parseEther("0.5"));
+    });
+
+    it("assigns 0 address to player 2 on initialization", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account1).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      const player2AddressTxn = await (await contract.games(0)).player2;
+      expect(player2AddressTxn).to.equal(
+        "0x0000000000000000000000000000000000000000"
+      );
+    });
+
+    it("allows any address to initialize a game", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      const firstGamePlayer1Txn = await (await contract.games(0)).player1;
+      expect(firstGamePlayer1Txn).to.equal(account2.address);
+
+      const secondGamePlayer1Txn = await (await contract.games(1)).player1;
+      expect(secondGamePlayer1Txn).to.equal(account3.address);
+    });
+
+    it("emits an event for the initialized game", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      let newGameTxn = await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      expect(newGameTxn)
+        .to.emit(contract, "GameInitialized")
+        .withArgs(
+          BigNumber.from(0),
+          account2.address,
+          ethers.utils.parseEther("0.5")
+        );
+
+      newGameTxn = await contract.connect(account3).initializeGame({
+        value: ethers.utils.parseEther("0.09"),
+      });
+
+      expect(newGameTxn)
+        .to.emit(contract, "GameInitialized")
+        .withArgs(
+          BigNumber.from(1),
+          account3.address,
+          ethers.utils.parseEther("0.09")
+        );
+    });
+
+    it("throws an error if the bet amount is lower than the minimum", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      let error;
+      try {
+        await contract.initializeGame({
+          value: ethers.utils.parseEther("0"),
+        });
+      } catch (newError) {
+        error = newError;
+      }
+
+      expect(error).to.not.equal(undefined);
+    });
+
+    it("throws an error if the bet amount is higher than the maximum", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      let error;
+      try {
+        await contract.initializeGame({
+          value: ethers.utils.parseEther("100"),
+        });
+      } catch (newError) {
+        error = newError;
+      }
+
+      expect(error).to.not.equal(undefined);
+    });
   });
 
   describe("startGame", () => {
