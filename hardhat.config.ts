@@ -4,40 +4,57 @@ import "@typechain/hardhat";
 import "hardhat-gas-reporter";
 import "solidity-coverage";
 
-import * as dotenv from "dotenv";
-
-import { HardhatUserConfig, task } from "hardhat/config";
+import { HardhatUserConfig } from "hardhat/config";
+import dotenv from "dotenv";
 
 dotenv.config();
 
-// This is a sample Hardhat task. To learn how to create your own go to
-// https://hardhat.org/guides/create-task.html
-task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
-  const accounts = await hre.ethers.getSigners();
+// This is a shim since TypeScript is unhappy with additional objects in the config object
+type HardhatUserConfigExtended = HardhatUserConfig & { [key: string]: any };
 
-  for (const account of accounts) {
-    console.log(account.address);
-  }
-});
-
-// You need to export an object to set up your config
-// Go to https://hardhat.org/config/ to learn more
-
-const config: HardhatUserConfig = {
+/**
+ * @type import('hardhat/config').HardhatUserConfig
+ */
+const config: HardhatUserConfigExtended = {
   solidity: "0.8.6",
   networks: {
-    ropsten: {
-      url: process.env.ROPSTEN_URL || "",
-      accounts:
-        process.env.PRIVATE_KEY !== undefined ? [process.env.PRIVATE_KEY] : [],
+    mainnet: {
+      url: process.env.MAINNET_APP_SECRET_KEY || "",
+      chainId: 1,
+    },
+    rinkeby: {
+      url: process.env.RINKEBY_APP_SECRET_KEY || "",
+      accounts: [process.env.RINKEBY_WALLET_PRIVATE_KEY || ""],
     },
   },
   gasReporter: {
-    enabled: process.env.REPORT_GAS !== undefined,
+    enabled:
+      Boolean(process.env.REPORT_GAS) && process.env.REPORT_GAS !== "false",
     currency: "USD",
+    coinmarketcap: process.env.COIN_MARKET_CAP_API_KEY || "",
   },
   etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
+    apiKey: process.env.ETHERSCAN_API_KEY || "",
+  },
+  watcher: {
+    compilation: {
+      tasks: ["compile"],
+      files: ["./contracts"],
+      verbose: true,
+    },
+    ci: {
+      tasks: [
+        "clean",
+        { command: "compile", params: { quiet: true } },
+        {
+          command: "test",
+          params: {
+            noCompile: true,
+            testFiles: ["./test/ConnectFour.test.js"],
+          },
+        },
+      ],
+    },
   },
 };
 

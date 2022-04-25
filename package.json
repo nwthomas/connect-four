@@ -4,7 +4,21 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "npx hardhat clean",
+    "compile": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat compile",
+    "coverage": "yarn typechain && hardhat coverage --solcoverjs ./.solcover.ts --temp artifacts --testfiles \"./test/**/*.ts\"",
+    "deploy-local": "npx hardhat run scripts/deploy-testnet.ts --network localhost",
+    "deploy-mainnet": "npx hardhat run scripts/deploy-mainnet.ts --network mainnet",
+    "deploy-rinkeby": "npx hardhat run scripts/deploy-testnet.ts --network rinkeby",
+    "lint": "yarn lint:sol && yarn lint:ts && yarn prettier:check",
+    "lint:sol": "./node_modules/.bin/solhint -f table contracts/**/*.sol",
+    "lint:ts": "eslint --config ./.eslintrc.json --ignore-path ./.eslintignore --ext .js,.ts .",
+    "prettier": "prettier --config ./.prettierrc.yaml --write \"**/*.{js,json,md,sol,ts}\"",
+    "prettier:check": "prettier --check --config ./.prettierrc.yaml \"**/*.{js,json,md,sol,ts}\"",
+    "start": "npx hardhat run scripts/run.ts",
+    "server": "npx hardhat node",
+    "test": "nodemon -x 'npx hardhat test' -w contracts -w test -e ts,sol",
+    "typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain"
   },
   "repository": {
     "type": "git",
@@ -31,6 +45,7 @@
     "@typescript-eslint/eslint-plugin": "^4.29.1",
     "@typescript-eslint/parser": "^4.29.1",
     "chai": "^4.2.0",
+    "cross-env": "^7.0.3",
     "dotenv": "^10.0.0",
     "eslint": "^7.29.0",
     "eslint-config-prettier": "^8.3.0",
@@ -42,6 +57,7 @@
     "ethereum-waffle": "^3.0.0",
     "ethers": "^5.0.0",
     "hardhat-gas-reporter": "^1.0.4",
+    "nodemon": "^2.0.15",
     "prettier": "^2.3.2",
     "prettier-plugin-solidity": "^1.0.0-beta.13",
     "solhint": "^3.3.6",
