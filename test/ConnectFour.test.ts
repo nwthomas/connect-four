@@ -67,6 +67,9 @@ describe("ConnectFour", () => {
 
       const betAmountTxn = await (await contract.games(0)).betAmount;
       expect(betAmountTxn).to.equal(ethers.utils.parseEther("0.5"));
+
+      const statusTxn = await (await contract.games(0)).status;
+      expect(statusTxn).to.equal(1);
     });
 
     it("assigns 0 address to player 2 on initialization", async () => {
@@ -130,36 +133,126 @@ describe("ConnectFour", () => {
     it("throws an error if the bet amount is lower than the minimum", async () => {
       const contract = await getDeployedContract(deployArgs);
 
-      let error;
       try {
         await contract.initializeGame({
           value: ethers.utils.parseEther("0"),
         });
-      } catch (newError) {
-        error = newError;
+      } catch (error) {
+        expect(error).to.not.equal(undefined);
       }
-
-      expect(error).to.not.equal(undefined);
     });
 
     it("throws an error if the bet amount is higher than the maximum", async () => {
       const contract = await getDeployedContract(deployArgs);
 
-      let error;
       try {
         await contract.initializeGame({
           value: ethers.utils.parseEther("100"),
         });
-      } catch (newError) {
-        error = newError;
+      } catch (error) {
+        expect(error).to.not.equal(undefined);
       }
-
-      expect(error).to.not.equal(undefined);
     });
   });
 
   describe("startGame", () => {
-    // finish
+    it("allows any address to start a game", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      const [, gameSecondPlayerTxn] = await contract.games(0);
+      expect(gameSecondPlayerTxn).to.equal(account3.address);
+    });
+
+    it("throws an error if the game ID is not valid", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      try {
+        await contract.connect(account3).startGame(10, {
+          value: ethers.utils.parseEther("1"),
+        });
+      } catch (error) {
+        expect(String(error).indexOf("Error: invalid game ID") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("throws an error if the game has already started", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      try {
+        await contract.connect(account3).startGame(0, {
+          value: ethers.utils.parseEther("0.5"),
+        });
+      } catch (error) {
+        expect(
+          String(error).indexOf("Error: game already started") > -1
+        ).to.equal(true);
+      }
+    });
+
+    it("throws an error if the bet amount is invalid", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      try {
+        await contract.connect(account3).startGame(0, {
+          value: ethers.utils.parseEther("50"),
+        });
+      } catch (error) {
+        expect(
+          String(error).indexOf("Error: invalid bet amount") > -1
+        ).to.equal(true);
+      }
+    });
+
+    it("throws an error if no ether is included", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      try {
+        await contract.connect(account3).startGame(0);
+      } catch (error) {
+        expect(
+          String(error).indexOf("Error: invalid bet amount") > -1
+        ).to.equal(true);
+      }
+    });
+
+    it("updates state variables successfully", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      const [, gameSecondPlayerTxn, , statusTxn] = await contract.games(0);
+      expect(gameSecondPlayerTxn).to.equal(account3.address);
+      expect(statusTxn).to.equal(2);
+    });
   });
 
   describe("playMove", () => {
@@ -187,27 +280,21 @@ describe("ConnectFour", () => {
     it("throws an error when the column index is out of bounds", async () => {
       const contract = await getDeployedContract(deployArgs);
 
-      let error;
       try {
         await contract.boardIndex(100, 5);
-      } catch (newError) {
-        error = newError;
+      } catch (error) {
+        expect(error).to.not.equal(undefined);
       }
-
-      expect(error).to.not.equal(undefined);
     });
 
     it("throws an error when the row index is out of bounds", async () => {
       const contract = await getDeployedContract(deployArgs);
 
-      let error;
       try {
         await contract.boardIndex(6, 100);
-      } catch (newError) {
-        error = newError;
+      } catch (error) {
+        expect(error).to.not.equal(undefined);
       }
-
-      expect(error).to.not.equal(undefined);
     });
   });
 });
