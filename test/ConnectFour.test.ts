@@ -659,7 +659,39 @@ describe("ConnectFour", () => {
     });
 
     it("allows win on direction right diagonal", async () => {
-      // finish
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account3).initializeGame({
+        value: ethers.utils.parseEther("1"),
+      });
+      await contract.connect(account2).startGame(0, {
+        value: ethers.utils.parseEther("1"),
+      });
+
+      await contract.connect(account3).playMove(0, 0);
+      await contract.connect(account2).playMove(0, 1);
+      await contract.connect(account3).playMove(0, 1);
+      await contract.connect(account2).playMove(0, 2);
+      await contract.connect(account3).playMove(0, 3);
+      await contract.connect(account2).playMove(0, 2);
+      await contract.connect(account3).playMove(0, 2);
+      await contract.connect(account2).playMove(0, 3);
+      await contract.connect(account3).playMove(0, 3);
+      await contract.connect(account2).playMove(0, 4);
+      await contract.connect(account3).playMove(0, 3);
+
+      const claimRewardTxn = await contract
+        .connect(account3)
+        .claimReward(0, account3.address, 0, 0, 2);
+
+      expect(claimRewardTxn)
+        .to.emit(contract, "RewardClaimed")
+        .withArgs(
+          0,
+          account3.address,
+          account3.address,
+          ethers.utils.parseEther("2")
+        );
     });
 
     it("allows win on direction left diagonal", async () => {
