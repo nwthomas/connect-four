@@ -7,12 +7,6 @@ const { expect } = chai;
 
 chai.use(solidity);
 
-const DISC_STATES = {
-  EMPTY: 0,
-  PLAYER_1: 1,
-  PLAYER2: 2,
-};
-
 type DeployArguments = {
   minBetAmount: BigNumber;
   maxBetAmount: BigNumber;
@@ -404,7 +398,223 @@ describe("ConnectFour", () => {
   });
 
   describe("claimReward", () => {
-    // finish
+    it("throws an error if invalid game ID", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      try {
+        await contract.claimReward(0, account1.address, 0, 0, 0);
+      } catch (error) {
+        expect(String(error).indexOf("Error: invalid game ID") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("throws an error if not the msg.sender's game", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account2).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      try {
+        await contract
+          .connect(account3)
+          .claimReward(0, account1.address, 0, 0, 0);
+      } catch (error) {
+        expect(String(error).indexOf("Error: not your game") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("throws an error if the game is not started", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      try {
+        await contract.claimReward(0, account1.address, 0, 0, 0);
+      } catch (error) {
+        expect(String(error).indexOf("Error: game not started") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("throws an error if the disc does not belong to msg.sender as player 2", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      await contract.connect(account2).playMove(0, 0);
+
+      try {
+        await contract
+          .connect(account3)
+          .claimReward(0, account1.address, 0, 0, 0);
+      } catch (error) {
+        expect(String(error).indexOf("Error: not your disc") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("throws an error if the disc does not belong to msg.sender as player 1", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      await contract.connect(account2).playMove(0, 0);
+      await contract.connect(account3).playMove(0, 0);
+
+      try {
+        await contract
+          .connect(account2)
+          .claimReward(0, account1.address, 0, 1, 0);
+      } catch (error) {
+        expect(String(error).indexOf("Error: not your disc") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("throws an error if not winning direction right", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      await contract.connect(account2).playMove(0, 0);
+
+      try {
+        await contract
+          .connect(account2)
+          .claimReward(0, account1.address, 0, 0, 3);
+      } catch (error) {
+        expect(String(error).indexOf("Error: have not won") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("throws an error if not winning direction up", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      await contract.connect(account2).playMove(0, 0);
+      await contract.connect(account3).playMove(0, 1);
+
+      try {
+        await contract
+          .connect(account3)
+          .claimReward(0, account1.address, 1, 0, 1);
+      } catch (error) {
+        expect(String(error).indexOf("Error: have not won") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("throws an error if not winning direction right diagonal", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      await contract.connect(account2).playMove(0, 1);
+
+      try {
+        await contract
+          .connect(account2)
+          .claimReward(0, account1.address, 1, 0, 2);
+      } catch (error) {
+        expect(String(error).indexOf("Error: have not won") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("throws an error if not winning direction left diagonal", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      await contract.connect(account2).playMove(0, 0);
+      await contract.connect(account3).playMove(0, 6);
+
+      try {
+        await contract
+          .connect(account3)
+          .claimReward(0, account1.address, 6, 0, 0);
+      } catch (error) {
+        expect(String(error).indexOf("Error: have not won") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("allows win on direction right", () => {
+      // finish
+    });
+
+    it("allows win on direction up", async () => {
+      // finish
+    });
+
+    it("allows win on direction right diagonal", async () => {
+      // finish
+    });
+
+    it("allows win on direction left diagonal", async () => {
+      // finish
+    });
+
+    it("sends ether on win", async () => {
+      // finish
+    });
+
+    it("emits event on reward claim", async () => {
+      // finish
+    });
+
+    it("updates the status of the game to be bet withdrawn", async () => {
+      // finish
+    });
   });
 
   describe("boardIndex", () => {

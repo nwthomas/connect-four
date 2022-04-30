@@ -164,8 +164,6 @@ contract ConnectFour {
       "Error: not your turn"
     );
 
-    games[_gameId].isPlayer1Turn = !games[_gameId].isPlayer1Turn;
-
     for (uint256 i = 0; i < 6; i++) {
       if (games[_gameId].board[boardIndex(_col, i)] == Disc.Empty) {
         games[_gameId].board[boardIndex(_col, i)] = games[_gameId].isPlayer1Turn
@@ -175,6 +173,8 @@ contract ConnectFour {
         break;
       }
     }
+
+    games[_gameId].isPlayer1Turn = !games[_gameId].isPlayer1Turn;
   }
 
   /// @notice Withdraws the bet amounts of both players to the recipient for the given game when there exists
@@ -200,19 +200,26 @@ contract ConnectFour {
 
     Game memory game = games[_gameId];
 
-    require(game.status == Status.Started, "Error: Game not started");
+    require(game.status == Status.Started, "Error: game not started");
     require(
       msg.sender == game.player1 || msg.sender == game.player2,
       "Error: not your game"
     );
 
-    Disc player = game.player1 == msg.sender ? Disc.Player1 : Disc.Player2;
     uint256 firstBoardIndex = boardIndex(
       _startingWinDiscCol,
       _startingWinDiscRow
     );
 
-    require(game.board[firstBoardIndex] == player, "Error: have not won");
+    require(
+      (game.board[firstBoardIndex] == Disc.Player1 &&
+        msg.sender == game.player1) ||
+        (game.board[firstBoardIndex] == Disc.Player2 &&
+          msg.sender == game.player2),
+      "Error: not your disc"
+    );
+
+    Disc player = game.player1 == msg.sender ? Disc.Player1 : Disc.Player2;
 
     if (_direction == WinningDirection.Right) {
       require(
@@ -261,15 +268,15 @@ contract ConnectFour {
     } else {
       require(
         game.board[
-          boardIndex(_startingWinDiscCol + 1, _startingWinDiscRow - 1)
+          boardIndex(_startingWinDiscCol - 1, _startingWinDiscRow + 1)
         ] ==
           player &&
           game.board[
-            boardIndex(_startingWinDiscCol + 2, _startingWinDiscRow - 2)
+            boardIndex(_startingWinDiscCol - 2, _startingWinDiscRow + 2)
           ] ==
           player &&
           game.board[
-            boardIndex(_startingWinDiscCol + 3, _startingWinDiscRow - 3)
+            boardIndex(_startingWinDiscCol - 3, _startingWinDiscRow + 3)
           ] ==
           player,
         "Error: have not won"
