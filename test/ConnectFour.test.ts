@@ -7,6 +7,12 @@ const { expect } = chai;
 
 chai.use(solidity);
 
+const DISC_STATES = {
+  EMPTY: 0,
+  PLAYER_1: 1,
+  PLAYER2: 2,
+};
+
 type DeployArguments = {
   minBetAmount: BigNumber;
   maxBetAmount: BigNumber;
@@ -256,7 +262,145 @@ describe("ConnectFour", () => {
   });
 
   describe("playMove", () => {
-    // finish
+    it("throws an error if invalid game ID", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      try {
+        await contract.connect(account2).playMove(10, 0);
+      } catch (error) {
+        expect(String(error).indexOf("Error: invalid game ID") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("throws an error if a column on the board is already full", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      for (let i = 0; i < 6; i++) {
+        const currentPlayer = i % 2 === 0 ? account2 : account3;
+
+        await contract.connect(currentPlayer).playMove(0, 0);
+      }
+
+      try {
+        await contract.connect(account2).playMove(0, 5);
+      } catch (error) {
+        expect(String(error).indexOf("Error: column full") > -1).to.equal(true);
+      }
+    });
+
+    it("throws an error if not player 1's turn", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      await contract.connect(account2).playMove(0, 0);
+
+      try {
+        await contract.connect(account2).playMove(0, 0);
+      } catch (error) {
+        expect(String(error).indexOf("Error: not your turn") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("throws an error if not player 2's turn", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      try {
+        await contract.connect(account3).playMove(0, 0);
+      } catch (error) {
+        expect(String(error).indexOf("Error: not your turn") > -1).to.equal(
+          true
+        );
+      }
+    });
+
+    it("correctly updates player turn on moves", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.connect(account2).initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account3).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      let playerTurnTxn = await (await contract.games(0)).isPlayer1Turn;
+      expect(playerTurnTxn).to.equal(true);
+
+      await contract.connect(account2).playMove(0, 0);
+
+      playerTurnTxn = await (await contract.games(0)).isPlayer1Turn;
+      expect(playerTurnTxn).to.equal(false);
+
+      await contract.connect(account3).playMove(0, 0);
+
+      playerTurnTxn = await (await contract.games(0)).isPlayer1Turn;
+      expect(playerTurnTxn).to.equal(true);
+    });
+
+    it("can fill up the entire board with state", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account2).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      let column = 0;
+      let row = 0;
+      let timesErrored = 0;
+
+      while (column < 7) {
+        const currentPlayer = row % 2 === 0 ? account1 : account2;
+
+        try {
+          await contract.connect(currentPlayer).playMove(0, column);
+          row += 1;
+        } catch (error) {
+          expect(String(error).indexOf("Error: column full") > -1).to.equal(
+            true
+          );
+          column += 1;
+          row = 0;
+          timesErrored += 1;
+        }
+      }
+
+      // The total number of columns is 7, so this should expect 7 errors
+      expect(timesErrored).to.equal(7);
+    });
   });
 
   describe("claimReward", () => {

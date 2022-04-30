@@ -154,7 +154,7 @@ contract ConnectFour {
   function playMove(uint256 _gameId, uint256 _col) external {
     require(_gameId < gameIdCounter, "Error: invalid game ID");
     require(
-      games[_gameId].board[boardIndex(_col, 6)] == Disc.Empty,
+      games[_gameId].board[boardIndex(_col, 5)] == Disc.Empty,
       "Error: column full"
     );
     require(
@@ -166,11 +166,13 @@ contract ConnectFour {
 
     games[_gameId].isPlayer1Turn = !games[_gameId].isPlayer1Turn;
 
-    for (uint256 i = 0; i < 7; i++) {
+    for (uint256 i = 0; i < 6; i++) {
       if (games[_gameId].board[boardIndex(_col, i)] == Disc.Empty) {
         games[_gameId].board[boardIndex(_col, i)] = games[_gameId].isPlayer1Turn
           ? Disc.Player1
           : Disc.Player2;
+
+        break;
       }
     }
   }
