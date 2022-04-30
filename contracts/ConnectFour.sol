@@ -1,8 +1,6 @@
 //SPDX-License-Identifier: Unlicense
 pragma solidity ^0.8.6;
 
-import "hardhat/console.sol";
-
 /// @title ConnectFour
 /// @author Bloomtech
 /// @notice Allows any two players to place a 50-50 bet on who will win a game of Connect Four.
