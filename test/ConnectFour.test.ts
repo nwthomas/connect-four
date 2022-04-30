@@ -441,9 +441,9 @@ describe("ConnectFour", () => {
       try {
         await contract.claimReward(0, account1.address, 0, 0, 0);
       } catch (error) {
-        expect(String(error).indexOf("Error: game not started") > -1).to.equal(
-          true
-        );
+        expect(
+          String(error).indexOf("Error: game cannot be claimed") > -1
+        ).to.equal(true);
       }
     });
 
@@ -588,12 +588,74 @@ describe("ConnectFour", () => {
       }
     });
 
-    it("allows win on direction right", () => {
-      // finish
+    it("allows win on direction right", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.initializeGame({
+        value: ethers.utils.parseEther("0.5"),
+      });
+      await contract.connect(account2).startGame(0, {
+        value: ethers.utils.parseEther("0.5"),
+      });
+
+      await contract.playMove(0, 0);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 1);
+      await contract.playMove(0, 2);
+      await contract.connect(account2).playMove(0, 2);
+      await contract.playMove(0, 3);
+      await contract.connect(account2).playMove(0, 0);
+
+      const claimRewardTxn = await contract.claimReward(
+        0,
+        account1.address,
+        0,
+        0,
+        3
+      );
+
+      expect(claimRewardTxn)
+        .to.emit(contract, "RewardClaimed")
+        .withArgs(
+          0,
+          account1.address,
+          account1.address,
+          ethers.utils.parseEther("1")
+        );
     });
 
     it("allows win on direction up", async () => {
-      // finish
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.initializeGame({
+        value: ethers.utils.parseEther("1"),
+      });
+      await contract.connect(account2).startGame(0, {
+        value: ethers.utils.parseEther("1"),
+      });
+
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 6);
+      await contract.connect(account2).playMove(0, 0);
+
+      const claimRewardTxn = await contract
+        .connect(account2)
+        .claimReward(0, account2.address, 0, 0, 1);
+
+      expect(claimRewardTxn)
+        .to.emit(contract, "RewardClaimed")
+        .withArgs(
+          0,
+          account2.address,
+          account2.address,
+          ethers.utils.parseEther("2")
+        );
     });
 
     it("allows win on direction right diagonal", async () => {
@@ -605,15 +667,99 @@ describe("ConnectFour", () => {
     });
 
     it("sends ether on win", async () => {
-      // finish
-    });
+      const contract = await getDeployedContract(deployArgs);
 
-    it("emits event on reward claim", async () => {
-      // finish
+      await contract.initializeGame({
+        value: ethers.utils.parseEther("1"),
+      });
+      await contract.connect(account2).startGame(0, {
+        value: ethers.utils.parseEther("1"),
+      });
+
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 6);
+      await contract.connect(account2).playMove(0, 0);
+
+      let contractBalanceTxn = await contract.provider.getBalance(
+        contract.address
+      );
+      expect(contractBalanceTxn).to.equal(ethers.utils.parseEther("2"));
+
+      await contract
+        .connect(account2)
+        .claimReward(0, account2.address, 0, 0, 1);
+
+      contractBalanceTxn = await contract.provider.getBalance(contract.address);
+      expect(contractBalanceTxn).to.equal(ethers.utils.parseEther("0"));
     });
 
     it("updates the status of the game to be bet withdrawn", async () => {
-      // finish
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.initializeGame({
+        value: ethers.utils.parseEther("1"),
+      });
+      await contract.connect(account2).startGame(0, {
+        value: ethers.utils.parseEther("1"),
+      });
+
+      const [, , , initialGameStatusTxn] = await contract.games(0);
+      expect(initialGameStatusTxn).to.equal(2);
+
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 6);
+      await contract.connect(account2).playMove(0, 0);
+
+      await contract
+        .connect(account2)
+        .claimReward(0, account2.address, 0, 0, 1);
+
+      const [, , , finalGameStatusTxn] = await contract.games(0);
+      expect(finalGameStatusTxn).to.equal(3);
+    });
+
+    it("errors when attempting to claim reward on game that has been started", async () => {
+      const contract = await getDeployedContract(deployArgs);
+
+      await contract.initializeGame({
+        value: ethers.utils.parseEther("1"),
+      });
+      await contract.connect(account2).startGame(0, {
+        value: ethers.utils.parseEther("1"),
+      });
+
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 1);
+      await contract.connect(account2).playMove(0, 0);
+      await contract.playMove(0, 6);
+      await contract.connect(account2).playMove(0, 0);
+
+      await contract
+        .connect(account2)
+        .claimReward(0, account2.address, 0, 0, 1);
+
+      try {
+        await contract
+          .connect(account2)
+          .claimReward(0, account2.address, 0, 0, 1);
+      } catch (error) {
+        expect(
+          String(error).indexOf("Error: game cannot be claimed") > -1
+        ).to.equal(true);
+      }
     });
   });
 

@@ -102,7 +102,7 @@ contract ConnectFour {
   /// @return a game ID, which can be used by each player to interact with the new Game
   function initializeGame() external payable returns (uint256) {
     require(
-      msg.value < maxBetAmount && msg.value > minBetAmount,
+      msg.value <= maxBetAmount && msg.value >= minBetAmount,
       "Error: invalid bet amount"
     );
 
@@ -198,7 +198,7 @@ contract ConnectFour {
 
     Game memory game = games[_gameId];
 
-    require(game.status == Status.Started, "Error: game not started");
+    require(game.status == Status.Started, "Error: game cannot be claimed");
     require(
       msg.sender == game.player1 || msg.sender == game.player2,
       "Error: not your game"
