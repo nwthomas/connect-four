@@ -9,7 +9,7 @@ async function main() {
 
   await connectFour.deployed();
 
-  console.log("Greeter deployed to:", connectFour.address);
+  console.log("ConnectFour deployed to:", connectFour.address);
 }
 
 main().catch((error) => {
