@@ -10,6 +10,10 @@ async function main() {
   await connectFour.deployed();
 
   console.log("ConnectFour deployed to:", connectFour.address);
+
+  await connectFour.initializeGame({
+    value: ethers.utils.parseEther("0.5"),
+  });
 }
 
 main().catch((error) => {
